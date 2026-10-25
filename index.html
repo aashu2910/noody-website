@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noody Stickers</title>
+<style>
+  :root{
+    --bg:#f4f5fb; --panel:#ffffff; --ink:#1d2030; --muted:#6b7280;
+    --accent:#6c5ce7; --accent2:#00c2a8; --border:#e4e6f0; --chip:#eef0fb;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14151f; --panel:#1b1d2b; --ink:#eef0fa; --muted:#9aa0b4;
+      --accent:#8f7bff; --accent2:#2fe0c4; --border:#2a2d40; --chip:#232540;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14151f; --panel:#1b1d2b; --ink:#eef0fa; --muted:#9aa0b4;
+    --accent:#8f7bff; --accent2:#2fe0c4; --border:#2a2d40; --chip:#232540;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  header{
+    position:sticky; top:0; z-index:10; background:var(--panel);
+    border-bottom:1px solid var(--border); padding:14px 16px;
+  }
+  .wrap{max-width:1300px; margin:0 auto;}
+  h1{font-size:18px; margin:0 0 2px;}
+  .sub{color:var(--muted); font-size:12px; margin-bottom:10px;}
+  .bar{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  input[type="search"]{
+    flex:1; min-width:160px; padding:9px 12px; border-radius:10px;
+    border:1px solid var(--border); background:var(--bg); color:var(--ink); font-size:14px;
+  }
+  select, button{
+    padding:9px 12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--chip); color:var(--ink); font-size:13px; cursor:pointer;
+  }
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600;}
+  button.primary:hover{opacity:.9;}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .chip{
+    padding:5px 10px; border-radius:999px; background:var(--chip); font-size:12px;
+    cursor:pointer; border:1px solid transparent; user-select:none;
+  }
+  .chip.active{background:var(--accent); color:#fff;}
+  .stat{font-size:12px; color:var(--muted);}
+  #grid{
+    max-width:1300px; margin:14px auto; padding:0 16px 60px;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px;
+  }
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:8px; text-align:center; position:relative; transition:.15s transform;
+  }
+  .card:hover{transform:translateY(-2px);}
+  .card svg{width:100%; height:100px; display:block;}
+  .card .name{font-size:10.5px; color:var(--muted); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .card input[type="checkbox"]{
+    position:absolute; top:6px; left:6px; width:16px; height:16px; cursor:pointer;
+  }
+  .card .dl{
+    position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:6px;
+    background:var(--chip); border:1px solid var(--border); font-size:11px; display:flex;
+    align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  footer{text-align:center; color:var(--muted); font-size:12px; padding:20px 0 40px;}
+  #empty{display:none; text-align:center; color:var(--muted); padding:40px;}
+  .theme-toggle{margin-left:auto;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>🌟 Noody Stickers</h1>
+    <div class="sub">1000+ unique generated stickers — animals, humans, buildings &amp; cartoon creatures. Pick, search, and export as SVG or PNG (transparent background).</div>
+    <div class="bar">
+      <input id="search" type="search" placeholder="Search stickers by name, e.g. 'fox' or 'building'...">
+      <select id="formatSel">
+        <option value="svg">Download as SVG</option>
+        <option value="png">Download as PNG</option>
+      </select>
+      <button id="selectAllBtn">Select all (filtered)</button>
+      <button id="clearSelBtn">Clear selection</button>
+      <button id="downloadSelBtn" class="primary" disabled>Download selected (0)</button>
+      <button id="downloadAllBtn" class="primary">Download all 1000+ (ZIP)</button>
+      <button class="theme-toggle" id="themeBtn">🌓</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="stat" id="stat"></div>
+  </div>
+</header>
+
+<div id="grid"></div>
+<div id="empty">No stickers match your search.</div>
+<footer>Noody Stickers · all generated procedurally in your browser · nothing uploaded anywhere</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+/* ---------------------------------------------------------------
+   Seeded RNG so every sticker is deterministic but unique.
+--------------------------------------------------------------- */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function makeRng(idx){ return mulberry32(idx * 2654435761 + 12345); }
+function pick(rng, arr){ return arr[Math.floor(rng()*arr.length)%arr.length]; }
+function rnum(rng, min, max){ return min + rng()*(max-min); }
+function rint(rng, min, max){ return Math.floor(rnum(rng,min,max+1)); }
+
+/* ---------------------------------------------------------------
+   Palettes
+--------------------------------------------------------------- */
+const PALETTES = [
+  ["#FF6B6B","#FFD93D","#6BCB77","#4D96FF"],
+  ["#FF9A8B","#FF6A88","#FF99AC","#FFC3A0"],
+  ["#A8E6CF","#DCEDC2","#FFD3B6","#FFAAA6"],
+  ["#2EC4B6","#FF9F1C","#E71D36","#011627"],
+  ["#F72585","#7209B7","#3A0CA3","#4361EE"],
+  ["#F4A261","#E76F51","#2A9D8F","#264653"],
+  ["#FFB4A2","#E5989B","#B5838D","#6D6875"],
+  ["#06D6A0","#1B9AAA","#EF476F","#FFD166"],
+  ["#CDB4DB","#FFC8DD","#FFAFCC","#BDE0FE"],
+  ["#F94144","#F3722C","#F8961E","#90BE6D"]
+];
+function pal(rng){ return pick(rng, PALETTES); }
+
+/* ---------------------------------------------------------------
+   Name banks
+--------------------------------------------------------------- */
+const ANIMAL_BASE = ["Fox","Panda","Owl","Cat","Dog","Bunny","Bear","Koala","Fawn","Otter","Hedgehog","Penguin","Seal","Frog","Duckling","Lamb","Mouse","Raccoon","Wolf Pup","Tiger Cub","Lion Cub","Hamster","Squirrel","Chick","Dolphin","Whale","Turtle","Sloth","Llama","Pig","Chameleon","Parrot","Hippo","Elephant","Giraffe","Zebra","Monkey","Kangaroo","Flamingo","Peacock"];
+const ANIMAL_ADJ = ["Sleepy","Happy","Curious","Brave","Shy","Bouncy","Giggly","Cozy","Dreamy","Sunny","Chill","Sparkly","Cheeky","Fluffy","Snug","Jolly","Breezy","Dapper","Wiggly","Mellow"];
+const HUMAN_ROLE = ["Astronaut","Chef","Artist","Ninja","Wizard","Pirate","Doctor","Pilot","Scientist","Explorer","Dancer","Musician","Gardener","Detective","Superhero","Firefighter","Knight","Skater","Surfer","Yogi","Teacher","Robot Fan","Gamer","Baker","Painter"];
+const HUMAN_ADJ = ["Tiny","Cool","Brave","Cheerful","Quirky","Snazzy","Clever","Bold","Gentle","Spunky","Dreamy","Witty"];
+const BUILDING_BASE = ["Cottage","Tower","Castle","Cabin","Lighthouse","Treehouse","Skyscraper","Windmill","Bakery","Library","Observatory","Barn","Chapel","Houseboat","Igloo","Pagoda","Greenhouse","Clocktower","Bungalow","Mill"];
+const BUILDING_ADJ = ["Cozy","Little","Grand","Tiny","Sunny","Misty","Snowy","Starlit","Pastel","Whimsy","Rustic","Dreamy"];
+const CARTOON_BASE = ["Blob","Sprite","Starling","Doodle","Bean","Noodle","Glimmer","Puff","Wisp","Critter","Gizmo","Squiggle","Bubble","Pebble","Nugget","Marble","Sprout","Ember","Comet","Doozy"];
+const CARTOON_ADJ = ["Giggly","Wobbly","Zany","Groovy","Mystic","Bubbly","Spunky","Glowy","Wacky","Nifty","Perky","Jumpy"];
+
+/* ---------------------------------------------------------------
+   Shape helpers
+--------------------------------------------------------------- */
+function svgOpen(vb=120){ return `<svg viewBox="0 0 ${vb} ${vb}" xmlns="http://www.w3.org/2000/svg">`; }
+function circle(cx,cy,r,fill,extra=""){ return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" ${extra}/>`; }
+function ellipse(cx,cy,rx,ry,fill,extra=""){ return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}" ${extra}/>`; }
+function rect(x,y,w,h,fill,rxy=6,extra=""){ return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rxy}" fill="${fill}" ${extra}/>`; }
+function eye(cx,cy,r=4,pupil="#1d2030"){ return circle(cx,cy,r,"#fff")+circle(cx+0.6,cy+0.6,r*0.55,pupil); }
+function blush(cx,cy,color="#ff9aa2"){ return `<ellipse cx="${cx}" cy="${cy}" rx="5" ry="3" fill="${color}" opacity="0.55"/>`; }
+function smile(cx,cy,w=10,stroke="#1d2030"){ return `<path d="M ${cx-w/2} ${cy} Q ${cx} ${cy+w/2} ${cx+w/2} ${cy}" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round"/>`; }
+
+/* ---------------------------------------------------------------
+   Category generators — each returns {name, category, svg}
+--------------------------------------------------------------- */
+function genAnimal(idx, rng){
+  const colors = pal(rng);
+  const body = pick(rng,colors);
+  const accent = pick(rng,colors.filter(c=>c!==body)) || colors[0];
+  const earType = pick(rng,["round","pointy","floppy","none"]);
+  const hasSpots = rng() > 0.6;
+  const hasHat = rng() > 0.75;
+  const faceShift = rnum(rng,-3,3);
+  let s = svgOpen();
+  // ears
+  if(earType==="round"){
+    s += circle(38,30,13,body) + circle(82,30,13,body);
+    s += circle(38,30,6,accent) + circle(82,30,6,accent);
+  } else if(earType==="pointy"){
+    s += `<polygon points="30,42 38,10 48,40" fill="${body}"/><polygon points="72,40 82,10 90,42" fill="${body}"/>`;
+  } else if(earType==="floppy"){
+    s += ellipse(28,46,10,22,body) + ellipse(92,46,10,22,body);
+  }
+  // head
+  s += circle(60,62,34,body);
+  if(hasSpots){
+    for(let i=0;i<rint(rng,3,6);i++){
+      s += circle(rnum(rng,35,85),rnum(rng,45,85),rnum(rng,2.5,5.5),accent,'opacity="0.8"');
+    }
+  }
+  // snout
+  if(rng()>0.5){ s += ellipse(60,74,14,9,accent,'opacity="0.9"'); }
+  // eyes + face
+  s += eye(48+faceShift,58); s += eye(72+faceShift,58);
+  s += blush(44,72); s += blush(76,72);
+  s += smile(60,74,12);
+  // hat
+  if(hasHat){
+    const hatColor = pick(rng,colors);
+    s += `<polygon points="46,30 74,30 60,6" fill="${hatColor}"/>` + circle(60,6,3,"#fff");
+  }
+  s += "</svg>";
+  const name = `${pick(rng,ANIMAL_ADJ)} ${pick(rng,ANIMAL_BASE)}`;
+  return {name, category:"animal", svg:s};
+}
+
+function genHuman(idx, rng){
+  const colors = pal(rng);
+  const skin = pick(rng,["#F6C9A0","#E8B084","#C68863","#8D5524","#FFDFC4"]);
+  const outfit = pick(rng,colors);
+  const hairColor = pick(rng,["#2b2b2b","#5b3a29","#caa15a","#e63946","#6c5ce7","#b5651d","#eee"]);
+  const hairType = pick(rng,["round","spiky","long","bald","bun","cap"]);
+  const accessory = pick(rng,["none","glasses","scarf","bow","star"]);
+  let s = svgOpen();
+  // body
+  s += rect(38,78,44,34,outfit,14);
+  // neck
+  s += rect(54,66,12,14,skin,4);
+  // head
+  s += circle(60,52,28,skin);
+  // hair
+  if(hairType==="round") s += `<path d="M32 50 a28 28 0 0 1 56 0 Z" fill="${hairColor}"/>`;
+  else if(hairType==="spiky") { for(let i=0;i<7;i++){ const x=32+i*8; s+=`<polygon points="${x},30 ${x+4},8 ${x+8},30" fill="${hairColor}"/>`; } }
+  else if(hairType==="long") s += ellipse(60,55,32,36,hairColor) + circle(60,52,28,skin);
+  else if(hairType==="bun") s += `<path d="M32 50 a28 28 0 0 1 56 0 Z" fill="${hairColor}"/>` + circle(60,22,7,hairColor);
+  else if(hairType==="cap") s += `<path d="M30 46 a30 30 0 0 1 60 0 Z" fill="${outfit}"/>` + ellipse(60,46,32,6,outfit);
+  // face
+  s += eye(49,50); s += eye(71,50);
+  s += smile(60,64,14);
+  s += blush(42,60); s += blush(78,60);
+  // accessory
+  if(accessory==="glasses") s += `<rect x="40" y="46" width="16" height="10" rx="4" fill="none" stroke="#333" stroke-width="2"/><rect x="64" y="46" width="16" height="10" rx="4" fill="none" stroke="#333" stroke-width="2"/><line x1="56" y1="50" x2="64" y2="50" stroke="#333" stroke-width="2"/>`;
+  else if(accessory==="scarf") s += ellipse(60,76,20,7,pick(rng,colors));
+  else if(accessory==="bow") s += `<polygon points="50,30 60,36 50,42" fill="${pick(rng,colors)}"/><polygon points="70,30 60,36 70,42" fill="${pick(rng,colors)}"/>`;
+  else if(accessory==="star") s += `<polygon points="90,20 93,27 100,27 94,32 96,39 90,35 84,39 86,32 80,27 87,27" fill="#FFD93D"/>`;
+  s += "</svg>";
+  const name = `${pick(rng,HUMAN_ADJ)} ${pick(rng,HUMAN_ROLE)}`;
+  return {name, category:"human", svg:s};
+}
+
+function genBuilding(idx, rng){
+  const colors = pal(rng);
+  const wall = pick(rng,colors);
+  const roof = pick(rng,colors.filter(c=>c!==wall)) || colors[1];
+  const type = pick(rng,["house","tower","castle","windmill","hut"]);
+  let s = svgOpen();
+  if(type==="house"){
+    s += rect(30,55,60,45,wall,6);
+    s += `<polygon points="24,58 60,20 96,58" fill="${roof}"/>`;
+    s += rect(52,78,16,22,"#8d5524",2);
+    s += rect(36,62,14,14,"#dff6ff",3) + rect(70,62,14,14,"#dff6ff",3);
+  } else if(type==="tower"){
+    s += rect(42,30,36,70,wall,4);
+    s += `<polygon points="36,32 60,8 84,32" fill="${roof}"/>`;
+    for(let i=0;i<3;i++) s += rect(50,44+i*18,20,10,"#dff6ff",2);
+  } else if(type==="castle"){
+    s += rect(30,50,60,50,wall,2);
+    for(let i=0;i<4;i++) s += rect(28+i*16,36,10,16,wall,2);
+    s += rect(50,70,20,30,"#5b3a29",2);
+    s += `<polygon points="60,10 70,30 50,30" fill="${roof}"/>`;
+  } else if(type==="windmill"){
+    s += rect(48,55,24,45,wall,4);
+    s += circle(60,40,4,"#555");
+    for(let i=0;i<4;i++){ s += `<g transform="rotate(${i*90+idx%90} 60 40)"><ellipse cx="60" cy="20" rx="7" ry="20" fill="${roof}"/></g>`; }
+  } else {
+    s += ellipse(60,80,34,22,wall);
+    s += `<path d="M26 80 a34 34 0 0 1 68 0 Z" fill="${roof}"/>`;
+    s += rect(50,70,20,16,"#5b3a29",2);
+  }
+  s += ellipse(60,108,46,6,"#000",'opacity="0.08"');
+  s += "</svg>";
+  const name = `${pick(rng,BUILDING_ADJ)} ${pick(rng,BUILDING_BASE)}`;
+  return {name, category:"building", svg:s};
+}
+
+function genCartoon(idx, rng){
+  const colors = pal(rng);
+  const body = pick(rng,colors);
+  const shape = pick(rng,["blob","star","drop","square","cloud"]);
+  const limbCount = rint(rng,0,4);
+  const eyeCount = rint(rng,1,3);
+  let s = svgOpen();
+  if(shape==="blob") s += `<path d="M60 20 C90 20 100 50 95 75 C90 100 70 105 55 100 C30 95 20 70 25 50 C30 25 45 20 60 20 Z" fill="${body}"/>`;
+  else if(shape==="star") s += `<polygon points="60,15 72,45 105,45 78,65 88,98 60,78 32,98 42,65 15,45 48,45" fill="${body}"/>`;
+  else if(shape==="drop") s += `<path d="M60 15 C85 50 95 70 80 90 C65 108 55 108 40 90 C25 70 35 50 60 15 Z" fill="${body}"/>`;
+  else if(shape==="square") s += rect(25,25,70,70,body,20);
+  else s += `<path d="M30 70 a18 18 0 0 1 0-36 a22 22 0 0 1 40-8 a18 18 0 0 1 20 34 Z" fill="${body}"/>`;
+  for(let i=0;i<limbCount;i++){
+    const ang = (i/Math.max(limbCount,1))*Math.PI*2;
+    s += circle(60+Math.cos(ang)*40, 70+Math.sin(ang)*35, 6, body);
+  }
+  const ew = eyeCount===1? 0 : 12*(eyeCount-1);
+  for(let i=0;i<eyeCount;i++){
+    s += eye(60 - ew/2 + i*12, 58, 5);
+  }
+  s += smile(60,74,eyeCount===1?8:14);
+  s += "</svg>";
+  const name = `${pick(rng,CARTOON_ADJ)} ${pick(rng,CARTOON_BASE)}`;
+  return {name, category:"cartoon", svg:s};
+}
+
+const GENERATORS = [genAnimal, genHuman, genBuilding, genCartoon];
+const TOTAL = 1200;
+
+/* ---------------------------------------------------------------
+   Build sticker dataset
+--------------------------------------------------------------- */
+const stickers = [];
+(function build(){
+  const seen = new Set();
+  for(let i=0;i<TOTAL;i++){
+    const rng = makeRng(i+1);
+    const gen = GENERATORS[i % GENERATORS.length];
+    const data = gen(i, rng);
+    let uniqueName = data.name;
+    let n = 1;
+    while(seen.has(uniqueName)){ n++; uniqueName = `${data.name} ${n}`; }
+    seen.add(uniqueName);
+    const slug = uniqueName.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+    stickers.push({
+      id:i,
+      name: uniqueName,
+      category: data.category,
+      svg: data.svg,
+      filename: `noody-sticker-${String(i+1).padStart(4,"0")}-${slug}`
+    });
+  }
+})();
+
+/* ---------------------------------------------------------------
+   UI
+--------------------------------------------------------------- */
+const grid = document.getElementById("grid");
+const emptyEl = document.getElementById("empty");
+const searchEl = document.getElementById("search");
+const statEl = document.getElementById("stat");
+const chipsEl = document.getElementById("chips");
+const selected = new Set();
+
+const CATS = [["all","All"],["animal","Animals"],["human","Humans"],["building","Buildings"],["cartoon","Cartoons"]];
+let activeCat = "all";
+CATS.forEach(([key,label])=>{
+  const c = document.createElement("div");
+  c.className = "chip" + (key==="all" ? " active":"");
+  c.textContent = label;
+  c.dataset.key = key;
+  c.onclick = ()=>{ activeCat = key; [...chipsEl.children].forEach(ch=>ch.classList.toggle("active", ch===c)); render(); };
+  chipsEl.appendChild(c);
+});
+
+function matches(st, q){
+  if(activeCat!=="all" && st.category!==activeCat) return false;
+  if(!q) return true;
+  return st.name.toLowerCase().includes(q) || st.category.includes(q);
+}
+
+function cardHTML(st){
+  const checked = selected.has(st.id) ? "checked" : "";
+  return `<div class="card" data-id="${st.id}">
+    <input type="checkbox" ${checked} data-id="${st.id}">
+    <button class="dl" data-id="${st.id}" title="Download this sticker">⬇</button>
+    ${st.svg}
+    <div class="name">${st.name}</div>
+  </div>`;
+}
+
+let renderTimer = null;
+function render(){
+  clearTimeout(renderTimer);
+  const q = searchEl.value.trim().toLowerCase();
+  const filtered = stickers.filter(st=>matches(st,q));
+  statEl.textContent = `Showing ${filtered.length} of ${stickers.length} stickers · ${selected.size} selected`;
+  emptyEl.style.display = filtered.length ? "none" : "block";
+  // chunked render to keep UI responsive
+  grid.innerHTML = "";
+  let i = 0;
+  const CHUNK = 150;
+  function step(){
+    const frag = document.createDocumentFragment();
+    const wrapper = document.createElement("div");
+    const slice = filtered.slice(i, i+CHUNK);
+    wrapper.innerHTML = slice.map(cardHTML).join("");
+    while(wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+    grid.appendChild(frag);
+    i += CHUNK;
+    if(i < filtered.length){ renderTimer = setTimeout(step, 0); }
+  }
+  step();
+  updateDownloadBtn();
+}
+
+grid.addEventListener("change", e=>{
+  if(e.target.matches('input[type="checkbox"]')){
+    const id = Number(e.target.dataset.id);
+    if(e.target.checked) selected.add(id); else selected.delete(id);
+    updateDownloadBtn();
+    statEl.textContent = statEl.textContent.replace(/·\s*\d+\s*selected/, `· ${selected.size} selected`);
+  }
+});
+
+grid.addEventListener("click", e=>{
+  const btn = e.target.closest(".dl");
+  if(btn){
+    const st = stickers[Number(btn.dataset.id)];
+    downloadSingle(st, document.getElementById("formatSel").value);
+  }
+});
+
+searchEl.addEventListener("input", render);
+
+document.getElementById("selectAllBtn").onclick = ()=>{
+  const q = searchEl.value.trim().toLowerCase();
+  stickers.filter(st=>matches(st,q)).forEach(st=>selected.add(st.id));
+  render();
+};
+document.getElementById("clearSelBtn").onclick = ()=>{ selected.clear(); render(); };
+
+function updateDownloadBtn(){
+  const b = document.getElementById("downloadSelBtn");
+  b.textContent = `Download selected (${selected.size})`;
+  b.disabled = selected.size === 0;
+}
+
+document.getElementById("themeBtn").onclick = ()=>{
+  const r = document.documentElement;
+  const cur = r.getAttribute("data-theme");
+  r.setAttribute("data-theme", cur==="dark" ? "light" : "dark");
+};
+
+/* ---------------------------------------------------------------
+   Export: SVG <-> PNG (transparent) and ZIP packaging
+--------------------------------------------------------------- */
+function svgToPngBlob(svgString, size=512){
+  return new Promise((resolve,reject)=>{
+    const svg64 = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement("canvas");
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,size,size); // transparent background
+      ctx.drawImage(img,0,0,size,size);
+      canvas.toBlob(blob=>resolve(blob), "image/png");
+    };
+    img.onerror = reject;
+    img.src = svg64;
+  });
+}
+
+async function downloadSingle(st, format){
+  if(format==="svg"){
+    const blob = new Blob([st.svg], {type:"image/svg+xml"});
+    triggerDownload(blob, `${st.filename}.svg`);
+  } else {
+    const blob = await svgToPngBlob(st.svg);
+    triggerDownload(blob, `${st.filename}.png`);
+  }
+}
+
+function triggerDownload(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 200);
+}
+
+async function buildZip(list, format, onProgress){
+  const zip = new JSZip();
+  const folder = zip.folder("noody-stickers");
+  for(let i=0;i<list.length;i++){
+    const st = list[i];
+    if(format==="svg"){
+      folder.file(`${st.filename}.svg`, st.svg);
+    } else {
+      const blob = await svgToPngBlob(st.svg);
+      folder.file(`${st.filename}.png`, blob);
+    }
+    if(onProgress) onProgress(i+1, list.length);
+  }
+  return zip.generateAsync({type:"blob"});
+}
+
+async function runZipDownload(list, btn){
+  const format = document.getElementById("formatSel").value;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  try{
+    const blob = await buildZip(list, format, (done,total)=>{
+      btn.textContent = `Zipping ${done}/${total}...`;
+    });
+    triggerDownload(blob, `noody-stickers-${format}-${list.length}.zip`);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = list===selectedList() && selected.size===0;
+  }
+}
+function selectedList(){ return stickers.filter(st=>selected.has(st.id)); }
+
+document.getElementById("downloadAllBtn").onclick = (e)=>{
+  runZipDownload(stickers, e.target);
+};
+document.getElementById("downloadSelBtn").onclick = (e)=>{
+  const list = selectedList();
+  if(list.length) runZipDownload(list, e.target);
+};
+
+render();
+</script>
+</body>
+</html>
