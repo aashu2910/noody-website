@@ -62,7 +62,7 @@ if (!ready) {
 } else {
   // Already logged in? Go straight to the app.
   onAuthStateChanged(auth, (user) => {
-    if (user) location.replace("app.html");
+    if (user) location.replace("/live/");
   });
 
   form.addEventListener("submit", async (e) => {
@@ -80,7 +80,7 @@ if (!ready) {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      location.replace("app.html");
+      location.replace("/live/");
     } catch (err) {
       setMsg(friendly(err));
       busy(false);
@@ -91,7 +91,7 @@ if (!ready) {
     busy(true);
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-      location.replace("app.html");
+      location.replace("/live/");
     } catch (err) {
       setMsg(friendly(err));
       busy(false);

@@ -1,0 +1,6 @@
+# Not part of the website - never uploaded
+_setup/
+deploy.bat
+README.md
+firestore.rules
+.vscode/

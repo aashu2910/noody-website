@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>noody live</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="app-page">
+  <div id="unavailable" class="unavailable" hidden>
+    <div class="unavailable-card">
+      <div class="brand"><span class="dot"></span>noody<span class="brand-live">live</span></div>
+      <h1>This page isn't available right now</h1>
+      <p>Please try again in a little while.</p>
+      <button class="btn btn-ghost" type="button" onclick="location.reload()">Try again</button>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="/live/"><span class="dot"></span>noody<span class="brand-live">live</span></a>
+    <div class="me">
+      <span id="myAvatar" class="avatar avatar-sm"></span>
+      <span class="me-text">
+        <span id="myName" class="me-name"></span>
+        <span id="myMeta" class="me-meta"></span>
+      </span>
+      <button id="profileBtn" class="btn btn-ghost btn-sm" type="button">Profile</button>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="lobby">
+    <!-- Random match -->
+    <section class="match">
+      <div class="preview">
+        <video id="previewVideo" autoplay playsinline muted></video>
+        <div id="previewOff" class="preview-off">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+          <span>Your camera turns on when you start</span>
+        </div>
+        <div id="searchingBadge" class="searching-badge" hidden><span class="pip"></span>Searching</div>
+      </div>
+
+      <div class="match-body">
+        <h1>Meet someone new</h1>
+        <p class="sub">We keep looking until someone's free, and connect you at random — people in your region first.</p>
+
+        <div class="filter">
+          <span class="filter-label">Talk to</span>
+          <div class="seg" id="wantSeg" role="group" aria-label="Talk to">
+            <button type="button" data-v="anyone">Anyone</button>
+            <button type="button" data-v="female">Female</button>
+            <button type="button" data-v="male">Male</button>
+          </div>
+        </div>
+        <div class="filter">
+          <span class="filter-label">Where</span>
+          <div class="seg" id="scopeSeg" role="group" aria-label="Where">
+            <button type="button" data-v="nearby">Nearby first</button>
+            <button type="button" data-v="region">My region only</button>
+            <button type="button" data-v="anywhere">Anywhere</button>
+          </div>
+        </div>
+
+        <button id="searchBtn" class="btn btn-primary btn-lg btn-block" type="button">Start</button>
+        <p id="searchStatus" class="search-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Live list -->
+    <div class="lobby-head">
+      <h2>Who's live</h2>
+      <span id="liveCount" class="count">0 online</span>
+    </div>
+    <p class="sub">Or pick someone yourself — they'll get an Accept / Decline.</p>
+    <ul id="userList" class="user-list" aria-live="polite"></ul>
+    <div id="emptyState" class="empty">
+      <div class="radar"><span></span><span></span><span></span></div>
+      <p><strong>Nobody else is live right now.</strong></p>
+      <p>Share <a href="https://noody.online" target="_blank" rel="noopener">noody.online</a> with friends — they'll appear here the moment they sign in.</p>
+    </div>
+  </main>
+
+  <!-- Profile -->
+  <div id="profileModal" class="modal" hidden>
+    <form id="profileForm" class="modal-card profile-card" novalidate>
+      <h2>Your profile</h2>
+      <p class="modal-sub">Used to match you with the right people.</p>
+      <label class="field">
+        <span>Name shown to others</span>
+        <input id="pfName" type="text" maxlength="40" autocomplete="name" />
+      </label>
+      <div class="field">
+        <span>I am</span>
+        <div class="seg seg-full" id="pfGender" role="group" aria-label="Gender">
+          <button type="button" data-v="male">Male</button>
+          <button type="button" data-v="female">Female</button>
+          <button type="button" data-v="other">Other</button>
+        </div>
+      </div>
+      <label class="field">
+        <span>Region</span>
+        <select id="pfRegion"></select>
+      </label>
+      <label class="check">
+        <input id="pfAdult" type="checkbox" />
+        <span>I'm 18 or older and will be respectful on calls.</span>
+      </label>
+      <p id="pfMsg" class="form-msg error"></p>
+      <div class="modal-actions">
+        <button id="pfCancel" class="btn btn-ghost" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Incoming direct call -->
+  <div id="incoming" class="modal" hidden>
+    <div class="modal-card ringing">
+      <span id="incomingAvatar" class="avatar avatar-lg"></span>
+      <p class="modal-kicker">Incoming video call</p>
+      <h2 id="incomingName">Someone</h2>
+      <p id="incomingMeta" class="modal-sub"></p>
+      <div class="modal-actions">
+        <button id="declineBtn" class="btn btn-danger" type="button">Decline</button>
+        <button id="acceptBtn" class="btn btn-primary" type="button">Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call screen -->
+  <section id="callScreen" class="call" hidden>
+    <video id="remoteVideo" class="remote" autoplay playsinline></video>
+    <div id="remotePlaceholder" class="remote-placeholder">
+      <span id="peerAvatar" class="avatar avatar-xl"></span>
+    </div>
+    <video id="localVideo" class="local" autoplay playsinline muted></video>
+
+    <div class="call-top">
+      <div class="call-who">
+        <span id="callPeer" class="call-peer"></span>
+        <span id="callMeta" class="call-meta"></span>
+        <span id="callStatus" class="call-status">Connecting…</span>
+      </div>
+      <button id="reportBtn" class="btn btn-ghost btn-sm report-btn" type="button">Report</button>
+    </div>
+
+    <div class="controls">
+      <button id="micBtn" class="ctrl" type="button" title="Mute microphone" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+      </button>
+      <button id="camBtn" class="ctrl" type="button" title="Turn camera off" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      </button>
+      <button id="hangupBtn" class="ctrl ctrl-end" type="button" title="End call">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85a1 1 0 0 1-1.41-.01L.29 13.08a1 1 0 0 1 0-1.41C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67a1 1 0 0 1 0 1.41l-2.48 2.48a1 1 0 0 1-1.41.01 11.3 11.3 0 0 0-2.67-1.85 1 1 0 0 1-.56-.9v-3.1A15 15 0 0 0 12 9z"/></svg>
+      </button>
+      <button id="nextBtn" class="ctrl ctrl-next" type="button" title="Next person">
+        Next
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zm10-12v12h2V6h-2z"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <script type="module" src="/js/app.js"></script>
+  <script>
+    setTimeout(function () {
+      if (!window.__noodyReady) document.getElementById("unavailable").hidden = false;
+    }, 8000);
+  </script>
+</body>
+</html>

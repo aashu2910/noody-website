@@ -1,10 +1,6 @@
-// ============================================================
-//  STEP 1 — Paste YOUR Firebase web config here.
-//  Firebase Console → Project settings (gear icon) → General
-//  → "Your apps" → Web app → SDK setup and configuration → Config
-//  These values are public by design. Your Firestore security
-//  rules (firestore.rules) are what keep the data safe.
-// ============================================================
+// Firebase web config for the noody-live project.
+// (These values are meant to be in website code; the key is locked to noody.online
+//  in Google Cloud, and Firestore rules protect the data.)
 export const firebaseConfig = {
   apiKey: "AIzaSyBCZs6jwQ5wyW9rCiBiXARqX7U0Q-zkVm0",
   authDomain: "noody-live.firebaseapp.com",
@@ -15,14 +11,12 @@ export const firebaseConfig = {
   measurementId: "G-1CNW1HSD01"
 };
 
-// ============================================================
-//  Servers WebRTC uses to find a path between two browsers.
-//  The free Google STUN servers work for most home/mobile networks.
-//  If calls connect on Wi-Fi but fail on some office/college or
-//  mobile networks, add a TURN server (e.g. a free Metered.ca
-//  account) like the commented example below.
-// ============================================================
+// Free Google STUN servers — enough when both people are on simple home Wi-Fi.
 export const iceServers = [
   { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
-  // ,{ urls: "turn:YOUR_TURN_HOST:443", username: "USERNAME", credential: "PASSWORD" }
 ];
+
+// TURN relay — needed for calls on mobile data (Jio/Airtel etc.), office or college Wi-Fi.
+// Paste your Metered.ca credentials link here (see _setup/README.md → "Make calls connect everywhere").
+// Example: "https://noody.metered.live/api/v1/turn/credentials?apiKey=abc123..."
+export const turnCredentialsUrl = "tsnR_oCXTC_8Rlxdj3bma-DEdG6HAf9Yms6cj1QabpRejcb5";
