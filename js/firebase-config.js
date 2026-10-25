@@ -6,12 +6,13 @@
 //  rules (firestore.rules) are what keep the data safe.
 // ============================================================
 export const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-  projectId: "PASTE_YOUR_PROJECT_ID",
-  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID",
-  appId: "PASTE_YOUR_APP_ID"
+  apiKey: "AIzaSyBCZs6jwQ5wyW9rCiBiXARqX7U0Q-zkVm0",
+  authDomain: "noody-live.firebaseapp.com",
+  projectId: "noody-live",
+  storageBucket: "noody-live.firebasestorage.app",
+  messagingSenderId: "647666331434",
+  appId: "1:647666331434:web:5aa05671049e91e921f853",
+  measurementId: "G-1CNW1HSD01"
 };
 
 // ============================================================
